@@ -139,9 +139,11 @@ class CrossLine:
         self.horizontal_axis_rotated = rot_matrix_z.apply(self.horizontal_axis)
         self.vertical_axis_rotated = self.vertical_axis
 
+        self.point_v0 = self.vertical_axis_rotated * self.amplitude_v + self.origin
         line_v0 = zip(self.origin, self.vertical_axis_rotated * self.amplitude_v + self.origin)
         self.plt_line_v0, = self.ax.plot(*line_v0, linewidth=1, linestyle="-", color="red")
 
+        self.point_v1 = - self.vertical_axis_rotated * self.amplitude_v + self.origin
         line_v1 = zip(self.origin, - self.vertical_axis_rotated * self.amplitude_v + self.origin)
         self.plt_line_v1, = self.ax.plot(*line_v1, linewidth=1, linestyle="-", color="green")
 
@@ -241,20 +243,74 @@ class CrossLine:
         self.progress_phase = value
         self.update_diagrams()
 
+    def get_point_v0(self):
+        if self.is_wave:
+            if np.cos(self.phi * self.wave_number + self.progress_phase) > 0:
+                amp_v = np.cos(self.phi * self.wave_number + self.progress_phase) * self.amplitude_v
+            else:
+                amp_v = 0.
+        else:
+            amp_v = self.amplitude_v
+        return self.vertical_axis_rotated * amp_v + self.origin
+
+    def get_point_v1(self):
+        if self.is_wave:
+            if np.cos(self.phi * self.wave_number + self.progress_phase) > 0:
+                amp_v = 0.
+            else:
+                amp_v = np.abs(np.cos(self.phi * self.wave_number + self.progress_phase) * self.amplitude_v)
+        else:
+            amp_v = self.amplitude_v
+        return - self.vertical_axis_rotated * amp_v + self.origin
+
+    def get_point_h0(self):
+        if self.is_wave:
+            if np.cos(self.phi * self.wave_number + self.progress_phase) > 0:
+                amp_h = (np.cos((self.phi + self.dif_phase_v_h) * self.wave_number + self.progress_phase) *
+                         self.amplitude_h)
+            else:
+                amp_h = 0.
+        else:
+            amp_h = self.amplitude_h
+        return self.horizontal_axis_rotated * amp_h + self.origin
+
+    def get_point_h1(self):
+        if self.is_wave:
+            if np.cos(self.phi * self.wave_number + self.progress_phase) > 0:
+                amp_h = 0.
+            else:
+                amp_h = np.abs((np.cos((self.phi + self.dif_phase_v_h) * self.wave_number + self.progress_phase) *
+                               self.amplitude_h))
+        else:
+            amp_h = self.amplitude_h
+        return - self.horizontal_axis_rotated * amp_h + self.origin
+
+    def get_path_resultant(self):
+        if self.is_wave:
+            amp_v = np.cos(self.phi * self.wave_number + self.progress_phase) * self.amplitude_v
+            amp_h = (np.cos((self.phi + self.dif_phase_v_h) * self.wave_number + self.progress_phase) *
+                     self.amplitude_h)
+        else:
+            amp_v = self.amplitude_v
+            amp_h = self.amplitude_h
+        vector = self.vertical_axis_rotated * amp_v + self.horizontal_axis_rotated * amp_h + self.origin
+        return vector
+
 
 class Path:
-    def __init__(self, ax, line_width, color):
+    def __init__(self, ax, line_style, line_width, color):
         self.ax = ax
+        self.line_style = line_style
         self.line_width = line_width
         self.color = color
 
-        self.is_draw_path = False
+        self.is_draw_path = True
 
         self.x_path = []
         self.y_path = []
         self.z_path = []
         self.path, = self.ax.plot(np.array(self.x_path), np.array(self.y_path), np.array(self.z_path),
-                                  color=self.color, linewidth=self.line_width)
+                                  color=self.color, linewidth=self.line_width, linestyle=self.line_style)
 
     def append_path(self, position):
         if self.is_draw_path:
@@ -281,6 +337,8 @@ def update_diagram():
     for line in cross_lines:
         line.set_pregress_phase(phase)
 
+    set_path()
+
 
 def set_is_spiral_base(value):
     if value:
@@ -289,6 +347,8 @@ def set_is_spiral_base(value):
     else:
         for i in range(len(cross_lines)):
             cross_lines[i].set_pitch(0.)
+
+    set_path()
 
 
 def set_cross_lines(num):
@@ -308,6 +368,8 @@ def set_cross_lines(num):
     set_pitch_spiral(pitch_spiral)
     set_is_wave(var_is_wave.get())
 
+    set_path()
+
 
 def set_pitch_spiral(value):
     global pitch_spiral
@@ -319,12 +381,16 @@ def set_pitch_spiral(value):
         else:
             cross_lines[i].set_pitch(0.)
 
+    set_path()
+
 
 def set_num_lap(value):
     global num_lap
     num_lap = value
 
     set_cross_lines(num_cross_lines)
+
+    set_path()
 
 
 def set_num_twist(value):
@@ -335,30 +401,75 @@ def set_num_twist(value):
         phi = i * (2. * np.pi * num_lap) / num_cross_lines
         cross_lines[i].roll(phi * num_twist)
 
+    set_path()
+
 
 def set_is_wave(value):
     for line in cross_lines:
         line.set_is_wave(value)
+
+    set_path()
 
 
 def set_amplitude_v(value):
     for line in cross_lines:
         line.set_amplitude_v(value)
 
+    set_path()
+
 
 def set_amplitude_h(value):
     for line in cross_lines:
         line.set_amplitude_h(value)
+
+    set_path()
 
 
 def set_wave_number(value):
     for line in cross_lines:
         line.set_wave_number(value)
 
+    set_path()
+
 
 def set_dif_phase_deg(value):
     for line in cross_lines:
         line.set_dif_phase_deg(value)
+
+    set_path()
+
+
+def set_path():
+    set_path_v()
+    set_path_h()
+    set_path_resultant()
+
+
+def set_path_v():
+    path_v0.clear_path()
+    path_v1.clear_path()
+    for line in cross_lines:
+        p0 = line.get_point_v0()
+        path_v0.append_path(np.array([p0[0], p0[1], p0[2]]))
+        p1 = line.get_point_v1()
+        path_v1.append_path(np.array([p1[0], p1[1], p1[2]]))
+
+
+def set_path_h():
+    path_h0.clear_path()
+    path_h1.clear_path()
+    for line in cross_lines:
+        p0 = line.get_point_h0()
+        path_h0.append_path(np.array([p0[0], p0[1], p0[2]]))
+        p1 = line.get_point_h1()
+        path_h1.append_path(np.array([p1[0], p1[1], p1[2]]))
+
+
+def set_path_resultant():
+    path_resultant.clear_path()
+    for line in cross_lines:
+        p = line.get_path_resultant()
+        path_resultant.append_path(np.array([p[0], p[1], p[2]]))
 
 
 def create_parameter_setter():
@@ -469,7 +580,7 @@ def create_parameter_setter():
     # var_dif_phase_deg = tk.StringVar(root)
     var_dif_phase_deg.set(str(dif_phase_v_h_deg))
     spn_dif_phase_deg = tk.Spinbox(
-        frm_wave, textvariable=var_dif_phase_deg, format="%.0f", from_=0, to=360, increment=1,
+        frm_wave, textvariable=var_dif_phase_deg, format="%.0f", from_=-360, to=360, increment=1,
         command=lambda: set_dif_phase_deg(float(var_dif_phase_deg.get())), width=5
     )
     spn_dif_phase_deg.pack(side="left")
@@ -532,6 +643,13 @@ if __name__ == "__main__":
         cross_line = CrossLine(ax0, 1, 1, i_ * (2. * np.pi * num_lap) / num_cross_lines,
                                amplitude_v, amplitude_h)
         cross_lines.append(cross_line)
+
+    path_v0 = Path(ax0, "-", 1, "red")
+    path_v1 = Path(ax0, "-", 1, "green")
+    path_h0 = Path(ax0, ":", 0.5, "blue")
+    path_h1 = Path(ax0, ":", 0.5, "darkorange")
+
+    path_resultant = Path(ax0, "-", 1, "white")
 
     set_num_twist(num_twist)
 
