@@ -19,6 +19,7 @@ amplitude_h = 0.5
 num_twist = 0.5
 wave_number = 1.
 dif_phase_v_h_deg = 0.
+is_path_vh = False
 
 """ Animation control """
 is_play = False
@@ -82,6 +83,7 @@ var_amp_v = tk.StringVar(root)
 var_amp_h = tk.StringVar(root)
 var_wn = tk.StringVar(root)
 var_dif_phase_deg = tk.StringVar(root)
+var_is_path_vh = tk.IntVar(root)
 
 """ Classes and functions """
 
@@ -148,7 +150,7 @@ class CrossLine:
         self.plt_line_v1, = self.ax.plot(*line_v1, linewidth=1, linestyle="-", color="green")
 
         line_h0 = zip(self.origin, self.horizontal_axis_rotated * self.amplitude_h + self.origin)
-        self.plt_line_h0, = self.ax.plot(*line_h0, linewidth=0.5, linestyle=":", color="blue")
+        self.plt_line_h0, = self.ax.plot(*line_h0, linewidth=0.5, linestyle=":", color="skyblue")
 
         line_h1 = zip(self.origin, - self.horizontal_axis_rotated * self.amplitude_h + self.origin)
         self.plt_line_h1, = self.ax.plot(*line_h1, linewidth=0.5, linestyle=":", color="darkorange")
@@ -172,36 +174,38 @@ class CrossLine:
                        (self.radius + self.pitch * self.phi / (2. * np.pi)))
 
         if self.is_wave:
-            if np.cos(self.phi * self.wave_number + self.progress_phase) >= 0:
-                amp_v0 = np.cos(self.phi * self.wave_number + self.progress_phase) * self.amplitude_v
+            phi = self.phi * self.wave_number + self.progress_phase
+            if np.cos(phi) > 0:
+                amp_v0 = np.cos(phi) * self.amplitude_v
                 amp_v1 = 0.
             else:
                 amp_v0 = 0.
-                amp_v1 = np.abs(np.cos(self.phi * self.wave_number + self.progress_phase) * self.amplitude_v)
+                amp_v1 = np.cos(phi) * self.amplitude_v
 
-            if np.cos(self.phi * self.wave_number + self.progress_phase) >= 0:
-                amp_h0 = np.cos((self.phi + self.dif_phase_v_h) * self.wave_number + self.progress_phase) * self.amplitude_h
+            phi = self.phi * self.wave_number + self.dif_phase_v_h + self.progress_phase
+            if np.cos(phi) > 0:
+                amp_h0 = np.cos(phi) * self.amplitude_h
                 amp_h1 = 0.
             else:
                 amp_h0 = 0.
-                amp_h1 = np.abs(np.cos((self.phi + self.dif_phase_v_h) * self.wave_number + self.progress_phase) * self.amplitude_h)
+                amp_h1 = np.cos(phi) * self.amplitude_h
 
         else:
             amp_v0 = self.amplitude_v
-            amp_v1 = self.amplitude_v
+            amp_v1 = - self.amplitude_v
             amp_h0 = self.amplitude_h
-            amp_h1 = self.amplitude_h
+            amp_h1 = - self.amplitude_h
 
         line_v0 = zip(self.origin, self.vertical_axis_rotated * amp_v0 + self.origin)
         self.plt_line_v0.set_data_3d(*line_v0)
 
-        line_v1 = zip(self.origin, - self.vertical_axis_rotated * amp_v1 + self.origin)
+        line_v1 = zip(self.origin, self.vertical_axis_rotated * amp_v1 + self.origin)
         self.plt_line_v1.set_data_3d(*line_v1)
 
         line_h0 = zip(self.origin, self.horizontal_axis_rotated * amp_h0 + self.origin)
         self.plt_line_h0.set_data_3d(*line_h0)
 
-        line_h1 = zip(self.origin, - self.horizontal_axis_rotated * amp_h1 + self.origin)
+        line_h1 = zip(self.origin, self.horizontal_axis_rotated * amp_h1 + self.origin)
         self.plt_line_h1.set_data_3d(*line_h1)
 
     def roll(self, angle):
@@ -245,8 +249,9 @@ class CrossLine:
 
     def get_point_v0(self):
         if self.is_wave:
-            if np.cos(self.phi * self.wave_number + self.progress_phase) > 0:
-                amp_v = np.cos(self.phi * self.wave_number + self.progress_phase) * self.amplitude_v
+            phi = self.phi * self.wave_number + self.progress_phase
+            if np.cos(phi) > 0:
+                amp_v = np.cos(phi) * self.amplitude_v
             else:
                 amp_v = 0.
         else:
@@ -255,19 +260,20 @@ class CrossLine:
 
     def get_point_v1(self):
         if self.is_wave:
-            if np.cos(self.phi * self.wave_number + self.progress_phase) > 0:
+            phi = self.phi * self.wave_number + self.progress_phase
+            if np.cos(phi) > 0:
                 amp_v = 0.
             else:
-                amp_v = np.abs(np.cos(self.phi * self.wave_number + self.progress_phase) * self.amplitude_v)
+                amp_v = np.cos(phi) * self.amplitude_v
         else:
-            amp_v = self.amplitude_v
-        return - self.vertical_axis_rotated * amp_v + self.origin
+            amp_v = - self.amplitude_v
+        return self.vertical_axis_rotated * amp_v + self.origin
 
     def get_point_h0(self):
         if self.is_wave:
-            if np.cos(self.phi * self.wave_number + self.progress_phase) > 0:
-                amp_h = (np.cos((self.phi + self.dif_phase_v_h) * self.wave_number + self.progress_phase) *
-                         self.amplitude_h)
+            phi = self.phi * self.wave_number + self.dif_phase_v_h + self.progress_phase
+            if np.cos(phi) > 0:
+                amp_h = np.cos(phi) * self.amplitude_h
             else:
                 amp_h = 0.
         else:
@@ -276,20 +282,21 @@ class CrossLine:
 
     def get_point_h1(self):
         if self.is_wave:
-            if np.cos(self.phi * self.wave_number + self.progress_phase) > 0:
+            phi = self.phi * self.wave_number + self.dif_phase_v_h + self.progress_phase
+            if np.cos(phi) > 0:
                 amp_h = 0.
             else:
-                amp_h = np.abs((np.cos((self.phi + self.dif_phase_v_h) * self.wave_number + self.progress_phase) *
-                               self.amplitude_h))
+                amp_h = np.cos(phi) * self.amplitude_h
         else:
-            amp_h = self.amplitude_h
-        return - self.horizontal_axis_rotated * amp_h + self.origin
+            amp_h = - self.amplitude_h
+        return self.horizontal_axis_rotated * amp_h + self.origin
 
     def get_path_resultant(self):
         if self.is_wave:
-            amp_v = np.cos(self.phi * self.wave_number + self.progress_phase) * self.amplitude_v
-            amp_h = (np.cos((self.phi + self.dif_phase_v_h) * self.wave_number + self.progress_phase) *
-                     self.amplitude_h)
+            phi_v = self.phi * self.wave_number + self.progress_phase
+            amp_v = np.cos(phi_v) * self.amplitude_v
+            phi_h = self.phi * self.wave_number + self.dif_phase_v_h + self.progress_phase
+            amp_h = np.cos(phi_h) * self.amplitude_h
         else:
             amp_v = self.amplitude_v
             amp_h = self.amplitude_h
@@ -390,6 +397,11 @@ def set_num_lap(value):
 
     set_cross_lines(num_cross_lines)
 
+    if var_is_wave.get():
+        for line in cross_lines:
+            line.set_wave_number(float(var_wn.get()))
+            line.set_is_wave(True)
+
     set_path()
 
 
@@ -442,7 +454,9 @@ def set_dif_phase_deg(value):
 def set_path():
     set_path_v()
     set_path_h()
-    set_path_resultant()
+
+    if is_path_vh:
+        set_path_resultant()
 
 
 def set_path_v():
@@ -470,6 +484,16 @@ def set_path_resultant():
     for line in cross_lines:
         p = line.get_path_resultant()
         path_resultant.append_path(np.array([p[0], p[1], p[2]]))
+
+
+def set_is_path_vh(value):
+    global is_path_vh
+    is_path_vh = value
+
+    if value:
+        set_path_resultant()
+    else:
+        path_resultant.clear_path()
 
 
 def create_parameter_setter():
@@ -585,6 +609,16 @@ def create_parameter_setter():
     )
     spn_dif_phase_deg.pack(side="left")
 
+    # Path of V + H
+    frm_path = ttk.Labelframe(root, relief="ridge", text="Path V + H", labelanchor="n")
+    frm_path.pack(side='left', fill=tk.Y)
+
+    # var_is_path_vh = tk.IntVar(root)
+    chk_is_path_vh = tk.Checkbutton(frm_path, text="Apply", variable=var_is_path_vh,
+                                    command=lambda: set_is_path_vh(var_is_path_vh.get()))
+    chk_is_path_vh.pack(side='left')
+    var_is_path_vh.set(False)
+
 
 def create_animation_control():
     frm_anim = ttk.Labelframe(root, relief="ridge", text="Animation", labelanchor="n")
@@ -646,7 +680,7 @@ if __name__ == "__main__":
 
     path_v0 = Path(ax0, "-", 1, "red")
     path_v1 = Path(ax0, "-", 1, "green")
-    path_h0 = Path(ax0, ":", 0.5, "blue")
+    path_h0 = Path(ax0, ":", 0.5, "skyblue")
     path_h1 = Path(ax0, ":", 0.5, "darkorange")
 
     path_resultant = Path(ax0, "-", 1, "white")
