@@ -400,6 +400,7 @@ def set_num_lap(value):
     if var_is_wave.get():
         for line in cross_lines:
             line.set_wave_number(float(var_wn.get()))
+            line.set_dif_phase_deg(float(var_dif_phase_deg.get()))
             line.set_is_wave(True)
 
     set_path()
